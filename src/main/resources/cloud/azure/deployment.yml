@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: borrowingservice-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: borrowingservice
+  template:
+    metadata:
+      labels:
+        app: borrowingservice
+    spec:
+      volumes:
+        - name: borrowingservice-config-volume
+          configMap:
+            name: borrowingservice-config
+            defaultMode: 420
+      containers:
+        - name: borrowingservice
+          image: borrowingservice:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: JAVA_ARGS
+              value: "--spring.config.location=/app/config/application.properties"
+          ports:
+            - containerPort: 8080
+          volumeMounts:
+            - mountPath: "/app/config"
+              name: borrowingservice-config-volume
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: borrowingservice-service
+spec:
+  selector:
+    app: borrowingservice
+  ports:
+    - protocol: TCP
+      port: 8081
+      targetPort: 8080

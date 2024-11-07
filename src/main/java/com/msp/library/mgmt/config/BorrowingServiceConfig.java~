@@ -1,0 +1,4 @@
+package com.msp.library.mgmt.config;
+
+public class BorrowingServiceConfig {
+}
