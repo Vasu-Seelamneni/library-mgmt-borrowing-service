@@ -1,0 +1,87 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-collector-config
+data:
+  otel-collector-config.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+          http:
+    
+    processors:
+      batch:
+      resource:
+        attributes:
+          - key: k8s.pod.name
+            from_attribute: ${K8S_POD_NAME}  # Adds pod name as an attribute
+          - key: k8s.namespace.name
+            from_attribute: ${K8S_NAMESPACE}  # Adds namespace as an attribute
+          - key: k8s.container.name
+            from_attribute: ${K8S_CONTAINER_NAME}  # Adds container name as an attribute
+        
+    exporters:
+      prometheus:
+        endpoint: "0.0.0.0:8889"
+      otlphttp:
+        endpoint: "http://loki:3100/loki/api/v1/push"
+      otlp:
+        endpoint: "http://tempo:4317"
+        
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          exporters: [otlp]
+        metrics:
+          receivers: [otlp]
+          exporters: [prometheus]
+        logs:
+          receivers: [otlp]
+          exporters: [otlphttp]
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otel-collector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: otel-collector
+  template:
+    metadata:
+      labels:
+        app: otel-collector
+    spec:
+      volumes:
+        - name: otel-collector-config
+          configMap:
+            name: otel-collector-config
+      containers:
+        - name: otel-collector
+          image: otel/opentelemetry-collector:latest
+          imagePullPolicy: IfNotPresent
+          args: ["--config=/etc/otel-collector-config/otel-collector-config.yaml"]
+          ports:
+            - containerPort: 4317 # OTLP gRPC
+            - containerPort: 8888 # Prometheus exporter
+          volumeMounts:
+            - name: otel-collector-config
+              mountPath: /etc/otel-collector-config/otel-collector-config.yaml
+              subPath: otel-collector-config.yaml
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel-collector
+spec:
+  selector:
+    app: otel-collector
+  ports:
+    - port: 4317
+      targetPort: 4317
+      protocol: TCP
+

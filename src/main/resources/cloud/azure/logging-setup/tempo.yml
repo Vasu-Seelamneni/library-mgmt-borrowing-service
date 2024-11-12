@@ -1,0 +1,79 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tempo-config
+data:
+  tempo.yaml: |
+    auth_enabled: false
+    server:
+      http_listen_port: 3100
+      grpc_listen_port: 9095
+
+    distributor:
+      receivers:
+        otlp:
+          protocols:
+            grpc:
+            http:
+
+    ingester:
+      trace_idle_period: 5m
+      max_block_bytes: 5_000_000
+      max_block_duration: 1h
+
+    storage:
+      trace:
+        backend: local
+        local:
+          path: /data/tempo/traces  # Directory for storing traces locally
+
+    compactor:
+      compaction:
+        block_retention: 48h
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tempo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tempo
+  template:
+    metadata:
+      labels:
+        app: tempo
+    spec:
+      containers:
+        - name: tempo
+          image: grafana/tempo:latest
+          args:
+            - "-config.file=/etc/tempo/tempo.yaml"
+          ports:
+            - containerPort: 4317
+            - containerPort: 9095
+          volumeMounts:
+            - name: tempo-storage
+              mountPath: /data/tempo
+            - name: tempo-config
+              mountPath: /etc/tempo/tempo.yaml
+              subPath: tempo.yaml
+      volumes:
+        - name: tempo-storage
+          emptyDir: {}
+        - name: tempo-config
+          configMap:
+            name: tempo-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tempo
+spec:
+  ports:
+    - port: 4317
+      targetPort: 4317
+  selector:
+    app: tempo

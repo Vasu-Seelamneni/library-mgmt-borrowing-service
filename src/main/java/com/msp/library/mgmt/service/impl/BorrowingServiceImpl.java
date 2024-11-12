@@ -36,27 +36,18 @@ public class BorrowingServiceImpl implements BorrowingService {
     @Override
     public Borrowing borrowBook(Long userId, Long bookId) {
 
-        //TODO: Check if user exists
-        /*if (!userClient.isUserExists(userId)) {
-            throw new RuntimeException("User not found");
-        }*/
-        String userExistsUrl = userServiceUrl + "/api/users/exists/" + userId;
+        // Validate user and book availability
+        /*String userExistsUrl = userServiceUrl + "/api/users/exists/" + userId;
         Boolean userExists = restTemplate.getForObject(userExistsUrl, Boolean.class);
-
         if(userExists != null && !userExists) {
             throw new RuntimeException("User not found");
         }
-
-        // TODO: Check if book is available
-        /*if (!bookClient.isBookAvailable(bookId)) {
-            throw new RuntimeException("Book not available");
-        }*/
 
         String bookExistsUrl = bookServiceUrl + "/api/books/available/" + bookId;
         Boolean bookExists = restTemplate.getForObject(bookExistsUrl, Boolean.class);
         if(bookExists != null && !bookExists) {
             throw new RuntimeException("Book not available");
-        }
+        }*/
 
         Borrowing borrowing = new Borrowing();
         borrowing.setUserId(userId);
@@ -66,7 +57,6 @@ public class BorrowingServiceImpl implements BorrowingService {
         borrowingRepository.save(borrowing);
 
         // Update book availability
-        //bookClient.updateBookAvailability(bookId, false);
         String updateBookAvailabilityUrl = bookServiceUrl + "/api/books/" + bookId + "?available=false";
         restTemplate.put(updateBookAvailabilityUrl, null);
 
@@ -83,7 +73,6 @@ public class BorrowingServiceImpl implements BorrowingService {
         borrowingRepository.save(borrowing);
 
         // Update book availability
-        //bookClient.updateBookAvailability(bookId, true);
         String updateBookAvailabilityUrl = bookServiceUrl + "/api/books/" + bookId + "?available=true";
         restTemplate.put(updateBookAvailabilityUrl, null);
 
